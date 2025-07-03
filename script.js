@@ -7,52 +7,43 @@ const pageNum = document.getElementById('pageNum');
 
 async function fetchAnime(query, page = 1) {
   currentQuery = query;
-  const res = await fetch(`https://api.jikan.moe/v4/anime?q=${query}&page=${page}`);
+  const res = await fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(query)}&page=${page}`);
   const data = await res.json();
 
   resultsContainer.innerHTML = "";
+
+  if (!data.data || data.data.length === 0) {
+    resultsContainer.innerHTML = "<p>Tidak ada hasil ditemukan.</p>";
+    return;
+  }
+
   data.data.forEach(anime => {
     const card = document.createElement('div');
     card.className = 'card';
     card.innerHTML = `
       <img src="${anime.images.jpg.image_url}" alt="${anime.title}">
-      <p>${anime.title}</p>
+      <h4>${anime.title}</h4>
     `;
-    card.addEventListener('click', () => showAnimeDetails(anime.mal_id));
+    card.addEventListener('click', () => showAnimeDetail(anime.mal_id));
     resultsContainer.appendChild(card);
   });
 
   pageNum.textContent = page;
 }
 
-async function showAnimeDetails(id) {
-  const res = await fetch(`https://api.jikan.moe/v4/anime/${id}`);
-  const data = await res.json();
-  const anime = data.data;
-
-  const modal = document.getElementById('animeModal');
-  const modalBody = document.getElementById('modalBody');
-  modalBody.innerHTML = `
-    <h2>${anime.title}</h2>
-    <img src="${anime.images.jpg.image_url}" style="width:200px"/>
-    <p><strong>Score:</strong> ${anime.score}</p>
-    <p><strong>Episodes:</strong> ${anime.episodes}</p>
-    <p><strong>Status:</strong> ${anime.status}</p>
-    <p><strong>Genres:</strong> ${anime.genres.map(g => g.name).join(', ')}</p>
-    <p>${anime.synopsis}</p>
-  `;
-  modal.style.display = 'flex';
-}
-
-document.querySelector('.close-btn').addEventListener('click', () => {
-  document.getElementById('animeModal').style.display = 'none';
+searchInput.addEventListener('input', () => {
+  const query = searchInput.value.trim();
+  if (query.length > 2) {
+    currentPage = 1;
+    fetchAnime(query, currentPage);
+  } else {
+    resultsContainer.innerHTML = "";
+  }
 });
 
-searchInput.addEventListener('input', () => {
-  if (searchInput.value.length >= 3) {
-    currentPage = 1;
-    fetchAnime(searchInput.value, currentPage);
-  }
+document.getElementById('nextPage').addEventListener('click', () => {
+  currentPage++;
+  fetchAnime(currentQuery, currentPage);
 });
 
 document.getElementById('prevPage').addEventListener('click', () => {
@@ -62,28 +53,52 @@ document.getElementById('prevPage').addEventListener('click', () => {
   }
 });
 
-document.getElementById('nextPage').addEventListener('click', () => {
-  currentPage++;
-  fetchAnime(currentQuery, currentPage);
+document.addEventListener("DOMContentLoaded", function () {
+  fetchRecommendedAnime();
 });
 
-document.addEventListener("DOMContentLoaded", () => {
-    document.querySelectorAll(".anime-card").forEach(card => {
-        const title = card.querySelector("h3")?.innerText;
-        const img = card.querySelector("img")?.src;
-        const btn = document.createElement("button");
-        btn.innerText = "Bookmark";
-        btn.onclick = () => {
-            const bookmarks = JSON.parse(localStorage.getItem("bookmarks")) || [];
-            const exists = bookmarks.find(a => a.title === title);
-            if (!exists) {
-                bookmarks.push({ title, image: img });
-                localStorage.setItem("bookmarks", JSON.stringify(bookmarks));
-                alert("Anime dibookmark!");
-            } else {
-                alert("Sudah dibookmark.");
-            }
-        };
-        card.appendChild(btn);
+function fetchRecommendedAnime() {
+  fetch("https://api.jikan.moe/v4/top/anime?limit=16")
+    .then(res => res.json())
+    .then(data => {
+      const container = document.getElementById("recommendedAnime");
+      container.innerHTML = "";
+      data.data.forEach(anime => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <img src="${anime.images.jpg.image_url}" alt="${anime.title}">
+          <h4>${anime.title}</h4>
+        `;
+        card.addEventListener("click", () => showAnimeDetail(anime.mal_id));
+        container.appendChild(card);
+      });
+    })
+    .catch(err => {
+      console.error("Gagal memuat rekomendasi anime:", err);
     });
-});
+}
+
+function showAnimeDetail(id) {
+  fetch(`https://api.jikan.moe/v4/anime/${id}`)
+    .then(res => res.json())
+    .then(data => {
+      const anime = data.data;
+      const modal = document.getElementById("animeModal");
+      const modalBody = document.getElementById("modalBody");
+      modalBody.innerHTML = `
+        <h2>${anime.title}</h2>
+        <img src="${anime.images.jpg.image_url}" alt="${anime.title}" style="max-width:200px;">
+        <p><strong>Score:</strong> ${anime.score}</p>
+        <p><strong>Episodes:</strong> ${anime.episodes}</p>
+        <p><strong>Status:</strong> ${anime.status}</p>
+        <p>${anime.synopsis}</p>
+        ${anime.trailer?.youtube_id ? `<iframe width="560" height="315" src="https://www.youtube.com/embed/${anime.trailer.youtube_id}" frameborder="0" allowfullscreen></iframe>` : ""}
+      `;
+      modal.style.display = "flex";
+    });
+
+  document.querySelector(".close-btn").onclick = () => {
+    document.getElementById("animeModal").style.display = "none";
+  };
+}
