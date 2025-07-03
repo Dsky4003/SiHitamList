@@ -17,25 +17,27 @@
         <li>Anime</li>
         <li>Manga</li>
         <li>Community</li>
-        <li>Read</li>
-        <li>Watch</li>
+        <li>Bookmarks</li>
       </ul>
     </nav>
   </header>
 
   <div class="search-bar">
-    <select id="filter">
-      <option value="anime">Anime</option>
-    </select>
     <input type="text" id="searchInput" placeholder="Search Anime..."/>
   </div>
 
   <main>
+   
     <section class="anime-section">
       <h2>Search Results</h2>
       <div class="cards" id="animeResults"></div>
     </section>
 
+     <section class="anime-section">
+      <h2>Rekomendasi Anime</h2>
+      <div class="cards" id="recommendedAnime"></div>
+    </section>
+    
     <div class="pagination">
       <button id="prevPage">Previous</button>
       <span id="pageNum">1</span>
